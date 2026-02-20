@@ -97,10 +97,12 @@ def on_alt_event(event):
 
 def create_image():
     width, height = 64, 64
-    image = Image.new('RGB', (width, height), color=(40, 44, 52))
+    image = Image.new('RGB', (width, height), color=(255, 255, 255))
     dc = ImageDraw.Draw(image)
-    dc.rectangle((16, 10, 48, 54), fill=(229, 192, 123))
-    dc.rectangle((24, 6, 40, 14), fill=(171, 178, 191))
+    # Green clipboard body
+    dc.rectangle((16, 10, 48, 54), fill=(0, 175, 102))
+    # White clipboard clip
+    dc.rectangle((24, 6, 40, 14), fill=(255, 255, 255))
     return image
 
 def on_clear(icon, item):

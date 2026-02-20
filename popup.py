@@ -4,6 +4,25 @@ import pyperclip
 import keyboard
 import ctypes
 
+# BuildOps-inspired theme: white dominant, green (#00AF66) highlight
+THEME = {
+    'bg': '#FFFFFF',
+    'fg': '#1a1a1a',
+    'fg_secondary': '#6b7280',
+    'accent': '#00AF66',
+    'accent_hover': '#009957',
+    'border': '#e5e7eb',
+    'input_bg': '#f9fafb',
+    'input_border': '#d1d5db',
+    'select_bg': '#00AF66',
+    'select_fg': '#FFFFFF',
+    'hover_bg': '#f0fdf4',
+    'title_bg': '#FFFFFF',
+    'shadow': '#00000010',
+    'font': 'Segoe UI',
+    'mono': 'Cascadia Code',
+}
+
 class ClipboardPopup(tk.Tk):
     def __init__(self, history_list, previous_hwnd=None, delete_callback=None):
         super().__init__()
@@ -23,72 +42,113 @@ class ClipboardPopup(tk.Tk):
         # Make sure we're on-screen
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        if x + 420 > sw: x = sw - 420
-        if y + 300 > sh: y = sh - 300
+        if x + 440 > sw: x = sw - 440
+        if y + 360 > sh: y = sh - 360
         
         self.geometry(f"+{x}+{y}")
-        self.config(bg='#2b2d30')
+        self.config(bg=THEME['border'])  # thin border effect
         
         self.bind("<Escape>", lambda e: self.destroy())
-        
-        # Use click-away to dismiss instead of FocusOut (which was causing crashes)
         self.bind("<Button-1>", self.on_click_check)
         
-        frame = tk.Frame(self, bg='#2b2d30', highlightbackground="#555", highlightthickness=1)
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Main container with 1px border simulation
+        container = tk.Frame(self, bg=THEME['bg'], padx=0, pady=0)
+        container.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
         
-        # Title bar
-        title_bar = tk.Frame(frame, bg='#1e1f22')
+        # ── Title bar ──
+        title_bar = tk.Frame(container, bg=THEME['title_bg'], pady=8)
         title_bar.pack(fill=tk.X)
-        title_label = tk.Label(title_bar, text="📋 My Clipboard Manager", font=("Segoe UI", 10, "bold"), bg='#1e1f22', fg='#e0e0e0', anchor='w', padx=8, pady=4)
-        title_label.pack(fill=tk.X)
+        
+        accent_bar = tk.Frame(title_bar, bg=THEME['accent'], width=3, height=18)
+        accent_bar.pack(side=tk.LEFT, padx=(12, 8))
+        
+        title_label = tk.Label(
+            title_bar, text="Clipboard Manager",
+            font=(THEME['font'], 11, "bold"),
+            bg=THEME['title_bg'], fg=THEME['fg']
+        )
+        title_label.pack(side=tk.LEFT)
+        
+        # Subtle divider
+        tk.Frame(container, bg=THEME['border'], height=1).pack(fill=tk.X)
         
         if not self.history:
-            lbl = tk.Label(frame, text="Clipboard history is empty.", bg='#2b2d30', fg='white', padx=10, pady=5)
-            lbl.pack()
+            empty = tk.Frame(container, bg=THEME['bg'], pady=20)
+            empty.pack(fill=tk.X)
+            tk.Label(
+                empty, text="No items in clipboard history",
+                font=(THEME['font'], 10), bg=THEME['bg'], fg=THEME['fg_secondary']
+            ).pack()
         else:
-            # Search entry
-            self.search_var = tk.StringVar()
+            # ── Search bar ──
+            search_frame = tk.Frame(container, bg=THEME['bg'], pady=8, padx=12)
+            search_frame.pack(fill=tk.X)
+            
+            # Search container with border
+            search_container = tk.Frame(
+                search_frame, bg=THEME['input_border'],
+                highlightthickness=0
+            )
+            search_container.pack(fill=tk.X)
+            
+            search_inner = tk.Frame(search_container, bg=THEME['input_bg'])
+            search_inner.pack(fill=tk.X, padx=1, pady=1)
+            
+            search_icon = tk.Label(
+                search_inner, text="⌕", font=(THEME['font'], 12),
+                bg=THEME['input_bg'], fg=THEME['fg_secondary']
+            )
+            search_icon.pack(side=tk.LEFT, padx=(8, 4))
+            
+            self.search_var = tk.StringVar(master=self)
             self.search_var.trace("w", self.update_list)
             
-            entry_frame = tk.Frame(frame, bg='#2b2d30')
-            entry_frame.pack(fill=tk.X, padx=5, pady=5)
-            
-            search_icon = tk.Label(entry_frame, text="🔍", bg='#2b2d30', fg='white')
-            search_icon.pack(side=tk.LEFT)
-            
             self.search_entry = tk.Entry(
-                entry_frame, textvariable=self.search_var,
-                relief=tk.FLAT, bg='#3c3f41', fg='white',
-                insertbackground='white', font=("Consolas", 10)
+                search_inner, textvariable=self.search_var,
+                relief=tk.FLAT, bg=THEME['input_bg'], fg=THEME['fg'],
+                insertbackground=THEME['accent'],
+                font=(THEME['font'], 10),
+                highlightthickness=0, bd=0
             )
-            self.search_entry.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=5)
+            self.search_entry.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(0, 8), ipady=6)
+            
+            # Hint text
+            hint = tk.Label(
+                search_inner, text="Del to remove",
+                font=(THEME['font'], 8), bg=THEME['input_bg'], fg='#c0c0c0'
+            )
+            hint.pack(side=tk.RIGHT, padx=(0, 8))
+            
+            # ── Listbox ──
+            list_frame = tk.Frame(container, bg=THEME['bg'], padx=12, pady=(0, 8))
+            list_frame.pack(fill=tk.BOTH, expand=True)
             
             self.listbox = tk.Listbox(
-                frame, 
-                font=("Consolas", 10), 
-                width=55, 
+                list_frame,
+                font=(THEME['mono'], 10),
+                width=55,
                 height=min(12, len(self.history)),
-                selectbackground="#214283",
-                selectforeground="white",
-                bg='#2b2d30',
-                fg='#bbbbbb',
+                selectbackground=THEME['select_bg'],
+                selectforeground=THEME['select_fg'],
+                bg=THEME['bg'],
+                fg=THEME['fg'],
                 activestyle="none",
                 highlightthickness=0,
-                bd=0
+                bd=0,
+                relief=tk.FLAT,
+                selectmode=tk.SINGLE
             )
-            self.listbox.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+            self.listbox.pack(fill=tk.BOTH, expand=True)
             
             self.populate_list()
                 
             self.listbox.bind("<Double-Button-1>", self.on_select)
             self.listbox.bind("<Button-1>", self.on_single_click)
             
-            # Key bindings for navigating the list while focused on the entry
+            # Key bindings
             self.search_entry.bind("<Down>", self.move_down)
             self.search_entry.bind("<Up>", self.move_up)
             self.search_entry.bind("<Return>", self.on_select)
-            
             self.listbox.bind("<Return>", self.on_select)
             
             # Delete key to remove items
@@ -97,17 +157,32 @@ class ClipboardPopup(tk.Tk):
             
             self.search_entry.focus_set()
         
+        # ── Bottom status bar ──
+        status_bar = tk.Frame(container, bg=THEME['bg'], pady=6)
+        status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+        tk.Frame(container, bg=THEME['border'], height=1).pack(fill=tk.X, side=tk.BOTTOM)
+        
+        count = len(self.history) if self.history else 0
+        status_text = f"{count} item{'s' if count != 1 else ''}"
+        tk.Label(
+            status_bar, text=status_text,
+            font=(THEME['font'], 8), bg=THEME['bg'], fg=THEME['fg_secondary']
+        ).pack(side=tk.LEFT, padx=12)
+        
+        tk.Label(
+            status_bar, text="↵ Paste  |  Esc Close",
+            font=(THEME['font'], 8), bg=THEME['bg'], fg='#c0c0c0'
+        ).pack(side=tk.RIGHT, padx=12)
+        
         # Force focus after a short delay
         self.after(50, self.force_focus)
 
     def on_click_check(self, event):
-        # Only dismiss if the click is outside the window content
         widget = event.widget
         if widget == self:
             self.destroy()
 
     def on_single_click(self, event):
-        # Select and paste on single click in listbox
         self.listbox.selection_clear(0, tk.END)
         idx = self.listbox.nearest(event.y)
         self.listbox.selection_set(idx)
@@ -120,19 +195,14 @@ class ClipboardPopup(tk.Tk):
         idx = selection[0]
         deleted_text = self.filtered_history[idx]
         
-        # Remove from filtered list
         self.filtered_history.pop(idx)
-        # Remove from master history
         if deleted_text in self.history:
             self.history.remove(deleted_text)
-        # Remove from database
         if self.delete_callback:
             self.delete_callback(deleted_text)
         
-        # Refresh the listbox
         self.populate_list()
         
-        # Re-select nearest item
         if self.filtered_history:
             new_idx = min(idx, len(self.filtered_history) - 1)
             self.listbox.select_set(new_idx)
@@ -145,7 +215,6 @@ class ClipboardPopup(tk.Tk):
             self.withdraw()
             self.deiconify()
             
-            # Simulate Alt keypress to bypass Windows foreground lock
             KEYEVENTF_KEYUP = 0x0002
             ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
             ctypes.windll.user32.keybd_event(0x12, 0, KEYEVENTF_KEYUP, 0)
@@ -209,10 +278,8 @@ class ClipboardPopup(tk.Tk):
             self.destroy()
             time.sleep(0.15)
             
-            # Restore focus to the previously active window before pasting
             if self.previous_hwnd:
                 try:
-                    # Alt trick to bypass foreground lock
                     KEYEVENTF_KEYUP = 0x0002
                     ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
                     ctypes.windll.user32.keybd_event(0x12, 0, KEYEVENTF_KEYUP, 0)
@@ -224,7 +291,6 @@ class ClipboardPopup(tk.Tk):
             keyboard.press_and_release('ctrl+v')
 
 def show(history_list, delete_callback=None):
-    # Capture the currently focused window BEFORE creating the popup
     previous_hwnd = ctypes.windll.user32.GetForegroundWindow()
     app = ClipboardPopup(history_list, previous_hwnd=previous_hwnd, delete_callback=delete_callback)
     app.mainloop()
