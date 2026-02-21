@@ -81,7 +81,12 @@ def on_hotkey_pressed():
     history = load_history()
     if not history:
         return
-    threading.Thread(target=popup.show, args=(history, delete_from_history), daemon=True).start()
+    def safe_show():
+        try:
+            popup.show(history, delete_from_history)
+        except Exception:
+            pass
+    threading.Thread(target=safe_show, daemon=True).start()
 
 def on_alt_event(event):
     global last_alt_time

@@ -120,8 +120,8 @@ class ClipboardPopup(tk.Tk):
             hint.pack(side=tk.RIGHT, padx=(0, 8))
             
             # ── Listbox ──
-            list_frame = tk.Frame(container, bg=THEME['bg'], padx=12, pady=(0, 8))
-            list_frame.pack(fill=tk.BOTH, expand=True)
+            list_frame = tk.Frame(container, bg=THEME['bg'])
+            list_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
             
             self.listbox = tk.Listbox(
                 list_frame,
