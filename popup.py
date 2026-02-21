@@ -63,7 +63,7 @@ class ClipboardPopup(tk.Tk):
         accent_bar.pack(side=tk.LEFT, padx=(12, 8))
         
         title_label = tk.Label(
-            title_bar, text="Clipboard Manager",
+            title_bar, text="My Clipboard Manager",
             font=(THEME['font'], 11, "bold"),
             bg=THEME['title_bg'], fg=THEME['fg']
         )
