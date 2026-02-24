@@ -23,6 +23,30 @@ THEME = {
     'mono': 'Cascadia Code',
 }
 
+
+def _enable_window_drag(window, *widgets):
+    """Allow dragging a borderless window by clicking supplied widgets."""
+    drag_state = {"x": 0, "y": 0}
+
+    def _start_drag(event):
+        drag_state["x"] = event.x_root
+        drag_state["y"] = event.y_root
+
+    def _do_drag(event):
+        dx = event.x_root - drag_state["x"]
+        dy = event.y_root - drag_state["y"]
+        drag_state["x"] = event.x_root
+        drag_state["y"] = event.y_root
+        x = window.winfo_x() + dx
+        y = window.winfo_y() + dy
+        window.geometry(f"+{x}+{y}")
+
+    for widget in widgets:
+        if widget is None:
+            continue
+        widget.bind("<ButtonPress-1>", _start_drag, add="+")
+        widget.bind("<B1-Motion>", _do_drag, add="+")
+
 class ClipboardPopup(tk.Tk):
     def __init__(self, history_list, previous_hwnd=None, delete_callback=None):
         super().__init__()
@@ -68,6 +92,7 @@ class ClipboardPopup(tk.Tk):
             bg=THEME['title_bg'], fg=THEME['fg']
         )
         title_label.pack(side=tk.LEFT)
+        _enable_window_drag(self, title_bar, accent_bar, title_label)
         
         # Subtle divider
         tk.Frame(container, bg=THEME['border'], height=1).pack(fill=tk.X)
@@ -238,7 +263,9 @@ class ClipboardPopup(tk.Tk):
         
     def populate_list(self):
         self.listbox.delete(0, tk.END)
-        for item in self.filtered_history:
+        # Limit UI rendering to top 100 items to prevent lag, search will still pull from all 500
+        display_items = self.filtered_history[:100]
+        for item in display_items:
             display_text = item.replace('\n', ' ').replace('\r', '')
             if len(display_text) > 52:
                 display_text = display_text[:49] + "..."

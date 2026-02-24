@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import sqlite3
+import ctypes
 import keyboard
 import pystray
 import pyperclip
@@ -11,9 +12,11 @@ import popup
 APPDATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MyClipboardManager")
 os.makedirs(APPDATA_DIR, exist_ok=True)
 DB_FILE = os.path.join(APPDATA_DIR, "clipboard.db")
-MAX_HISTORY = 50
+MAX_HISTORY = 500
 icon_instance = None
 running = True
+_single_instance_mutex = None
+MUTEX_NAME = "Global\\MyClipboardManagerSingleton"
 
 # Double-tap detection state
 last_alt_time = 0
@@ -27,6 +30,7 @@ def init_db():
         content TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at)')
     conn.commit()
     conn.close()
 
@@ -129,6 +133,12 @@ def setup_tray():
     icon_instance = pystray.Icon("MyClipboardManager", image, "MyClipboardManager", menu)
 
 def main():
+    global _single_instance_mutex
+    # Prevent duplicate tray instances.
+    _single_instance_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        return
+
     init_db()
     
     # Register double-tap Alt listener
